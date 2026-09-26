@@ -17,7 +17,8 @@ export function OperatorMenu() {
   const { data: session } = useSession();
   if (!session?.user) return null;
 
-  const { name, email, role } = session.user;
+  const { name, email } = session.user;
+  const role = (session.user as any).role;
   const initials = name?.substring(0, 2).toUpperCase() || "OP";
   const displayRole = role ? role.replace("_", " ").toLowerCase() : "Operator";
 

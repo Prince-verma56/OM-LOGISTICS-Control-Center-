@@ -15,7 +15,8 @@ import type { KpiSnapshot } from "@/types/kpi";
 import type { DemoNotification } from "@/types/notification";
 import type { Route } from "@/types/route";
 import type { ShipmentEvent } from "@/types/shipment";
-import type { Role, UserStatus } from "@prisma/client";
+export type Role = "OPS_AGENT" | "OPS_MANAGER" | "CUSTOMER_SUPPORT" | "ADMIN" | "CUSTOMER";
+export type UserStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
 
 export interface UserRecord {
   id: string;
