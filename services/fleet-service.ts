@@ -53,7 +53,7 @@ async function list(query: FleetListQuery): Promise<CollectionResponse<Vehicle>>
     const hasMatchingShipment = vehicleShipments.some((shipment) => {
       if (query.status && shipment.status !== query.status) return false;
       if (query.riskLevel && shipment.riskLevel !== query.riskLevel) return false;
-      if (query.customerId && shipment.customer.id !== query.customerId) return false;
+      if (query.customerId && shipment.customerId !== query.customerId) return false;
       if (query.hubId && shipment.currentHubId !== query.hubId && shipment.nextHubId !== query.hubId) return false;
       if (fromMs && new Date(shipment.bookedAt).getTime() < fromMs) return false;
       if (toMs && new Date(shipment.bookedAt).getTime() > toMs) return false;
@@ -68,7 +68,7 @@ async function list(query: FleetListQuery): Promise<CollectionResponse<Vehicle>>
         (value) => value?.toLowerCase().includes(needle),
       );
       const matchShipment = vehicleShipments.some((shipment) =>
-        [shipment.trackingNumber, shipment.customer.name, shipment.origin, shipment.destination].some(
+        [shipment.trackingNumber, shipment.customerName, shipment.origin, shipment.destination].some(
           (value) => value?.toLowerCase().includes(needle),
         ),
       );

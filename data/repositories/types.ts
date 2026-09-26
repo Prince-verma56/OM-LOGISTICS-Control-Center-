@@ -15,7 +15,7 @@ import type { KpiSnapshot } from "@/types/kpi";
 import type { DemoNotification } from "@/types/notification";
 import type { Route } from "@/types/route";
 import type { ShipmentEvent } from "@/types/shipment";
-import type { Role, UserStatus } from "../../generated/prisma";
+import type { Role, UserStatus } from "@prisma/client";
 
 export interface UserRecord {
   id: string;
