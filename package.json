@@ -17,7 +17,7 @@
     "maplibre:worker": "node scripts/copy-maplibre-worker.mjs",
     "predev": "node scripts/copy-maplibre-worker.mjs",
     "prebuild": "node scripts/copy-maplibre-worker.mjs",
-    "postinstall": "node scripts/copy-maplibre-worker.mjs && prisma generate"
+    "postinstall": "node scripts/copy-maplibre-worker.mjs && prisma generate || echo \"Skipping prisma generate (no DATABASE_URL)\""
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
