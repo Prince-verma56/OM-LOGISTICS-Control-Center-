@@ -3,6 +3,7 @@
 import { Activity, LogOut, ShieldCheck } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { signOut, useSession } from "next-auth/react";
+import type { Session } from "next-auth";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,8 +18,7 @@ export function OperatorMenu() {
   const { data: session } = useSession();
   if (!session?.user) return null;
 
-  const { name, email } = session.user;
-  const role = (session.user as any).role;
+  const { name, email, role } = session.user as Session["user"];
   const initials = name?.substring(0, 2).toUpperCase() || "OP";
   const displayRole = role ? role.replace("_", " ").toLowerCase() : "Operator";
 
