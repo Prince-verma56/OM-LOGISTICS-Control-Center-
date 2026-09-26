@@ -34,6 +34,10 @@ const CUSTOMERS: ReadonlyArray<{ name: string; segment: string }> = [
   { name: "Godavari Packaging Solutions", segment: "Packaging" },
 ];
 
+
+
+
+
 export function buildCustomers(rng: Rng): CustomerRecord[] {
   const hubWeights = HUB_DEFINITIONS.map((hub) => hub.weight);
   return CUSTOMERS.map((customer, index) => ({

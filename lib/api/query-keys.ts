@@ -18,7 +18,7 @@ export const queryKeys = {
   },
   fleet: {
     all: ["fleet"] as const,
-    live: () => ["fleet", "live"] as const,
+    live: (params: QueryParams = {}) => ["fleet", "live", params] as const,
     list: (params: QueryParams) => ["fleet", "list", params] as const,
   },
   hubs: {

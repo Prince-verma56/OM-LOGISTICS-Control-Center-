@@ -2,13 +2,13 @@ import { z } from "zod";
 import { NOTIFICATION_SEVERITIES, NOTIFICATION_TEMPLATES, VEHICLE_STATUSES } from "@/lib/constants/statuses";
 import type { FleetListQuery, KpiQuery } from "@/types/api";
 import { DEMO_SCENARIO_TRIGGERS, SIMULATION_SPEEDS } from "@/types/realtime";
-import { idSchema, isoDateOrDateTimeSchema, optionalTrimmedString } from "./common";
+import { idSchema, isoDateOrDateTimeSchema } from "./common";
+import { dashboardFiltersSchema } from "./shipments";
 
-export const fleetListQuerySchema = z.object({
-  status: z.enum(VEHICLE_STATUSES).optional(),
-  search: optionalTrimmedString(40),
-  routeId: idSchema.optional(),
-}) satisfies z.ZodType<FleetListQuery, unknown>;
+export const fleetListQuerySchema = dashboardFiltersSchema
+  .extend({
+    vehicleStatus: z.enum(VEHICLE_STATUSES).optional(),
+  }) satisfies z.ZodType<FleetListQuery, unknown>;
 
 export const hubIdParamSchema = z.object({ hubId: idSchema });
 

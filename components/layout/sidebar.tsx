@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import {
   Sidebar,
   SidebarContent,
@@ -43,6 +44,8 @@ const NAV = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const role = session?.user?.role || "OPS_AGENT";
   const summary = useDashboardSummary();
   const headline = useShipments({ search: DEMO_CONFIG.headlineTrackingNumber, scope: "all", pageSize: 1 });
   const headlineToken = headline.data?.data[0]?.publicTrackingToken;
@@ -71,6 +74,11 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {NAV.map((item) => {
+                // Customer support does not get Exceptions or Analytics
+                if (role === "CUSTOMER_SUPPORT" && (item.label === "Exceptions" || item.label === "Analytics")) {
+                  return null;
+                }
+                // Ops agent might get limited analytics, but for the UI they see the tab.
                 const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
                 const count = item.badge === "exceptions" ? summary.data?.openExceptions : undefined;
                 return (

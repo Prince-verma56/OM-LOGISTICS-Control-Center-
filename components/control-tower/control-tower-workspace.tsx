@@ -52,7 +52,10 @@ export function ControlTowerWorkspace() {
   const [selectedShipmentId, setSelectedShipmentId] = useState<string>();
   const [actionExceptionId, setActionExceptionId] = useState<string>();
 
-  const fleet = useFleetLive();
+  const query = toShipmentQuery(values, { scope: "active", sort: "risk", order: "desc" });
+  query.pageSize = pageSize;
+
+  const fleet = useFleetLive(query);
   const routes = useNetworkRoutes();
   const hubs = useHubs();
   const headline = useShipments({ search: DEMO_CONFIG.headlineTrackingNumber, scope: "all", pageSize: 1 });
@@ -77,12 +80,20 @@ export function ControlTowerWorkspace() {
     [setFocus],
   );
 
-  const query = toShipmentQuery(values, { scope: "active", sort: "risk", order: "desc" });
-  query.pageSize = pageSize;
-
   const vehicles = fleet.data?.data ?? [];
   const selectedVehicle = focus ? vehicles.find((vehicle) => vehicle.id === focus) : undefined;
-  const selectedRoute = selectedVehicle?.routeId ? routes.data?.data.find((route) => route.id === selectedVehicle.routeId) : undefined;
+  
+  const activeRouteIds = new Set(vehicles.map((v) => v.routeId).filter(Boolean));
+  const hasShipmentFilters = Boolean(
+    query.search || query.status || query.riskLevel || query.hubId || query.vehicleId || query.customerId || query.routeId || query.from || query.to
+  );
+  
+  const networkRoutes = routes.data?.data ?? [];
+  const displayRoutes = hasShipmentFilters
+    ? networkRoutes.filter((r) => activeRouteIds.has(r.id))
+    : networkRoutes;
+
+  const selectedRoute = selectedVehicle?.routeId ? networkRoutes.find((route) => route.id === selectedVehicle.routeId) : undefined;
 
   return (
     <PageTransition>
@@ -136,7 +147,7 @@ export function ControlTowerWorkspace() {
           ) : (
             <LiveMap
               vehicles={vehicles}
-              routes={routes.data?.data ?? []}
+              routes={displayRoutes}
               hubs={hubs.data?.data ?? []}
               selectedVehicleId={focus}
               onSelectVehicle={(vehicleId) => {
@@ -162,8 +173,8 @@ export function ControlTowerWorkspace() {
         </div>
 
         <div className={cn("scrollbar-thin flex min-w-0 flex-col gap-4 xl:overflow-y-auto", RAIL_HEIGHT)}>
-          <ExceptionPanel onAct={setActionExceptionId} limit={6} />
-          <HighRiskPanel onSelect={selectShipment} selectedShipmentId={selectedShipmentId} limit={6} />
+          <ExceptionPanel query={query} onAct={setActionExceptionId} limit={6} />
+          <HighRiskPanel query={query} onSelect={selectShipment} selectedShipmentId={selectedShipmentId} limit={6} />
           <HubStatusPanel limit={6} />
         </div>
       </div>

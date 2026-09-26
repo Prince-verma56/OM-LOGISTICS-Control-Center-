@@ -15,6 +15,16 @@ import type { KpiSnapshot } from "@/types/kpi";
 import type { DemoNotification } from "@/types/notification";
 import type { Route } from "@/types/route";
 import type { ShipmentEvent } from "@/types/shipment";
+import type { Role, UserStatus } from "../../generated/prisma";
+
+export interface UserRecord {
+  id: string;
+  name: string;
+  email: string;
+  passwordHash: string | null;
+  role: Role;
+  status: UserStatus;
+}
 
 /**
  * Repository contracts (ADR-003). Services depend only on these interfaces.
@@ -84,6 +94,11 @@ export interface AnalyticsRepository {
   setBaseline(baseline: DashboardBaseline): Promise<void>;
 }
 
+export interface UserRepository {
+  getByEmail(email: string): Promise<UserRecord | undefined>;
+  getById(id: string): Promise<UserRecord | undefined>;
+}
+
 /**
  * Operational clock. Demo: the simulated clock (advances with the simulator).
  * Production: wall-clock time.
@@ -103,4 +118,5 @@ export interface Repositories {
   exceptions: ExceptionRepository;
   notifications: NotificationRepository;
   analytics: AnalyticsRepository;
+  users: UserRepository;
 }

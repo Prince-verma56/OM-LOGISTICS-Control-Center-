@@ -12,7 +12,10 @@ import type {
   NotificationSeverity,
   NotificationTemplate,
 } from "@/types/notification";
+import { DemoEmailNotificationProvider } from "./providers/demo-email-provider";
 import { DemoInAppNotificationProvider } from "./providers/demo-in-app-notification-provider";
+import { DemoSmsNotificationProvider } from "./providers/demo-sms-provider";
+import { DemoWhatsAppNotificationProvider } from "./providers/demo-whatsapp-provider";
 
 /**
  * Notification pipeline (Phase 1):
@@ -24,36 +27,61 @@ import { DemoInAppNotificationProvider } from "./providers/demo-in-app-notificat
  * No WhatsApp / SMS / email provider is contacted, and none is required.
  */
 
-let provider: NotificationProvider | undefined;
+let providers: NotificationProvider[] | undefined;
 
-function getNotificationProvider(): NotificationProvider {
-  if (provider) return provider;
+function getNotificationProviders(): NotificationProvider[] {
+  if (providers) return providers;
   const mode = getAppConfig().notificationProviderMode;
   if (mode !== "in_app_demo") {
     logger.warn("NOTIFICATION_PROVIDER_FALLBACK", {
       mode,
-      message: "Only the in-app demo provider exists in Phase 1; external providers are documented only.",
+      message: "External providers are not implemented in Phase 1; using demo providers for all channels.",
     });
   }
-  provider = new DemoInAppNotificationProvider(() => getRepositories().notifications.nextId());
-  return provider;
+  const nextId = () => getRepositories().notifications.nextId();
+  providers = [
+    new DemoInAppNotificationProvider(nextId),
+    new DemoWhatsAppNotificationProvider(nextId),
+    new DemoSmsNotificationProvider(nextId),
+    new DemoEmailNotificationProvider(nextId),
+  ];
+  return providers;
 }
 
 async function trigger(message: NotificationMessage): Promise<NotificationResult | undefined> {
   const repos = getRepositories();
-  if (message.dedupeKey && (await repos.notifications.hasKey(message.dedupeKey))) return undefined;
+  // Use IN_APP as the primary dedupe check since it always fires
+  const primaryDedupeKey = message.dedupeKey ? `${message.dedupeKey}:IN_APP` : undefined;
+  
+  if (primaryDedupeKey && (await repos.notifications.hasKey(primaryDedupeKey))) {
+    return undefined;
+  }
 
   const shipment = message.shipmentId ? await repos.shipments.getById(message.shipmentId) : undefined;
   const now = repos.clock.now();
-  const notification = await getNotificationProvider().send(message, {
-    createdAt: now.toISOString(),
-    trackingNumber: shipment?.trackingNumber,
-  });
-  await repos.notifications.add(notification, message.dedupeKey);
+  
+  let primaryNotification: DemoNotification | undefined;
 
-  eventBus.publish({ type: "NOTIFICATION_UPDATED", occurredAt: notification.createdAt, data: { notification } });
-  logger.debug("NOTIFICATION_TRIGGERED", { id: notification.id, template: notification.template });
-  return { notification, deduplicated: false };
+  for (const provider of getNotificationProviders()) {
+    const notification = await provider.send(message, {
+      createdAt: now.toISOString(),
+      trackingNumber: shipment?.trackingNumber,
+    });
+    // Append channel to dedupe key so we can store one for each channel
+    const channelDedupe = message.dedupeKey ? `${message.dedupeKey}:${provider.channel}` : undefined;
+    await repos.notifications.add(notification, channelDedupe);
+    eventBus.publish({ type: "NOTIFICATION_UPDATED", occurredAt: notification.createdAt, data: { notification } });
+    
+    if (provider.channel === "IN_APP") {
+      primaryNotification = notification;
+    }
+  }
+
+  if (primaryNotification) {
+    logger.debug("NOTIFICATION_TRIGGERED", { id: primaryNotification.id, template: primaryNotification.template });
+    return { notification: primaryNotification, deduplicated: false };
+  }
+  return undefined;
 }
 
 async function list(limit = 50): Promise<CollectionResponse<DemoNotification>> {

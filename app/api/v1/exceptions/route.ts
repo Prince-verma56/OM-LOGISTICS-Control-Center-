@@ -7,4 +7,7 @@ import { alertService } from "@/services/alert-service";
  * Query: view (open|closed|all), status, severity, type, hubId, assignedTo,
  *        shipmentId, from, to, page, pageSize
  */
-export const GET = withApi(async ({ request }) => alertService.list(parseQuery(request, exceptionListQuerySchema)));
+export const GET = withApi(
+  async ({ request }) => alertService.list(parseQuery(request, exceptionListQuerySchema)),
+  { roles: ["OPS_AGENT", "OPS_MANAGER", "ADMIN"] }
+);

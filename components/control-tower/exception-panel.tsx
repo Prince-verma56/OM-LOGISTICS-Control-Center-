@@ -13,19 +13,29 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useExceptions } from "@/hooks/use-exceptions";
 import { EXCEPTION_SEVERITY_TONES, EXCEPTION_STATUS_LABELS } from "@/lib/constants/statuses";
 import { cn } from "@/lib/utils";
+import type { DashboardFilters } from "@/types/api";
 import { Panel } from "./panel";
 
 /** Open exceptions, most severe first, with a one-click action drawer. */
 export function ExceptionPanel({
   onAct,
+  query,
   limit = 8,
   className,
 }: {
   onAct: (exceptionId: string) => void;
+  query?: DashboardFilters;
   limit?: number;
   className?: string;
 }) {
-  const exceptions = useExceptions({ view: "open", page: 1, pageSize: limit });
+  const exceptions = useExceptions({
+    view: "open",
+    page: 1,
+    pageSize: limit,
+    hubId: query?.hubId,
+    from: query?.from,
+    to: query?.to,
+  });
   const items = exceptions.data?.data ?? [];
 
   return (
@@ -79,3 +89,6 @@ export function ExceptionPanel({
     </Panel>
   );
 }
+
+
+

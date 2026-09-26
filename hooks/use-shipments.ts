@@ -6,6 +6,7 @@ import { queryKeys } from "@/lib/api/query-keys";
 import type { PaginatedResponse } from "@/types/api";
 import type { ShipmentRouteView } from "@/types/route";
 import type { PublicTrackingView, Shipment, ShipmentDetail } from "@/types/shipment";
+import type { RiskLevel, ShipmentStatus } from "@/lib/constants/statuses";
 
 export interface ShipmentQueryParams extends QueryParams {
   page?: number;
@@ -14,8 +15,8 @@ export interface ShipmentQueryParams extends QueryParams {
   sort?: "risk" | "eta" | "delay" | "lastUpdated" | "trackingNumber";
   order?: "asc" | "desc";
   search?: string;
-  status?: string;
-  riskLevel?: string;
+  status?: ShipmentStatus;
+  riskLevel?: RiskLevel;
   hubId?: string;
   vehicleId?: string;
   customerId?: string;

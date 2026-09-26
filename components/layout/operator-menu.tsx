@@ -1,7 +1,8 @@
 "use client";
 
-import { Activity, ShieldCheck } from "lucide-react";
+import { Activity, LogOut, ShieldCheck } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,33 +12,37 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DEMO_CONFIG } from "@/config/demo";
-
-/** Demo operator identity. Authentication and RBAC arrive in a later phase (brain/21). */
+/** Authentic operator identity based on NextAuth session. */
 export function OperatorMenu() {
-  const { operator } = DEMO_CONFIG;
+  const { data: session } = useSession();
+  if (!session?.user) return null;
+
+  const { name, email, role } = session.user;
+  const initials = name?.substring(0, 2).toUpperCase() || "OP";
+  const displayRole = role ? role.replace("_", " ").toLowerCase() : "Operator";
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 gap-2 px-1.5" aria-label={`Signed in as ${operator.name}`}>
+        <Button variant="ghost" className="h-8 gap-2 px-1.5" aria-label={`Signed in as ${name}`}>
           <Avatar className="size-7">
-            <AvatarFallback className="bg-primary/15 text-[11px] font-semibold text-primary">{operator.initials}</AvatarFallback>
+            <AvatarFallback className="bg-primary/15 text-[11px] font-semibold text-primary">{initials}</AvatarFallback>
           </Avatar>
           <span className="hidden flex-col items-start leading-tight xl:flex">
-            <span className="text-xs font-medium">{operator.name}</span>
-            <span className="text-[10px] text-muted-foreground">Ops manager · demo</span>
+            <span className="text-xs font-medium">{name}</span>
+            <span className="text-[10px] text-muted-foreground">{displayRole} · DEMO</span>
           </span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel className="flex flex-col gap-0.5">
-          <span>{operator.name}</span>
-          <span className="text-xs font-normal text-muted-foreground">{operator.email}</span>
+          <span>{name}</span>
+          <span className="text-xs font-normal text-muted-foreground">{email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled className="gap-2">
           <ShieldCheck className="size-4" />
-          Role: {operator.role.replace("_", " ").toLowerCase()} (simulated)
+          Role: {displayRole}
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="gap-2">
           <a href="/api/health" target="_blank" rel="noopener noreferrer">
@@ -46,9 +51,10 @@ export function OperatorMenu() {
           </a>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <p className="px-2 py-1.5 text-[11px] text-muted-foreground">
-          Sign-in and role-based access are not enabled in the Phase 1 prototype.
-        </p>
+        <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => void signOut({ callbackUrl: "/login" })}>
+          <LogOut className="size-4" />
+          Sign out
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { auth } from "@/auth";
 import { getAppConfig } from "@/lib/config/app";
 import { searchParamsToObject } from "@/lib/validation/common";
 import type { ApiErrorBody } from "@/types/api";
@@ -23,6 +24,7 @@ interface HandlerOptions {
   /** Endpoint only exists in DEMO_MODE (brain/10 §10). */
   demoOnly?: boolean;
   rateLimit?: { limit: number; windowMs: number; bucket: string };
+  roles?: string[];
 }
 
 type Handler<P> = (ctx: HandlerContext & { params: P }) => Promise<Response | unknown>;
@@ -34,6 +36,17 @@ export function withApi<P = Record<string, never>>(handler: Handler<P>, options:
     const route = request.nextUrl.pathname;
     try {
       if (options.demoOnly && !getAppConfig().demoMode) throw demoModeRequired();
+      
+      if (options.roles && options.roles.length > 0) {
+        const session = await auth();
+        if (!session?.user) {
+          throw new AppError("UNAUTHORIZED", "Authentication required.", 401);
+        }
+        if (!session.user.role || !options.roles.includes(session.user.role)) {
+          throw new AppError("FORBIDDEN", "Insufficient permissions.", 403);
+        }
+      }
+
       if (options.rateLimit) {
         const verdict = rateLimit(
           `${options.rateLimit.bucket}:${clientKey(request)}`,

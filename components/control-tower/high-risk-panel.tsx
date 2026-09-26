@@ -10,6 +10,7 @@ import { useShipments } from "@/hooks/use-shipments";
 import { formatTime } from "@/lib/formatters/date";
 import { currentEta, formatDelay, shipmentPath } from "@/lib/formatters/shipment";
 import { cn } from "@/lib/utils";
+import type { ShipmentListQuery } from "@/types/api";
 import type { Shipment } from "@/types/shipment";
 import { Panel } from "./panel";
 
@@ -17,15 +18,17 @@ import { Panel } from "./panel";
 export function HighRiskPanel({
   onSelect,
   selectedShipmentId,
+  query,
   limit = 6,
   className,
 }: {
   onSelect: (shipment: Shipment) => void;
   selectedShipmentId?: string;
+  query?: Omit<ShipmentListQuery, "page" | "pageSize" | "scope" | "sort" | "order">;
   limit?: number;
   className?: string;
 }) {
-  const shipments = useShipments({ scope: "active", sort: "risk", order: "desc", page: 1, pageSize: limit, riskLevel: undefined });
+  const shipments = useShipments({ ...query, scope: "active", sort: "risk", order: "desc", page: 1, pageSize: limit, riskLevel: undefined });
   const items = (shipments.data?.data ?? []).filter((shipment) => shipment.riskLevel === "HIGH" || shipment.riskLevel === "CRITICAL");
 
   return (

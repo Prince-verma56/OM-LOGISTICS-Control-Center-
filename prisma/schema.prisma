@@ -16,6 +16,20 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  OPS_AGENT
+  OPS_MANAGER
+  CUSTOMER_SUPPORT
+  ADMIN
+  CUSTOMER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
 enum ShipmentStatus {
   ORDER_BOOKED
   PICKED_UP
@@ -95,6 +109,17 @@ enum DataSource {
   WMS
   GPS_PROVIDER
   HUB_SYSTEM
+}
+
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  passwordHash String?
+  role         Role       @default(OPS_AGENT)
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 }
 
 model Customer {
@@ -350,4 +375,20 @@ model KpiSnapshot {
   customerQueries         Int
   avgHubDwellMinutes      Int
   routeExceptions         Int
+}
+
+model SystemAudit {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  oldValue   Json?
+  newValue   Json?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
 }

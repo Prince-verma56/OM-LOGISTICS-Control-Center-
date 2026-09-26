@@ -71,7 +71,7 @@ function refreshLiveQueries(queryClient: QueryClient) {
 
 function patchPositions(queryClient: QueryClient, positions: VehiclePositionUpdate[]) {
   const byId = new Map(positions.map((position) => [position.id, position]));
-  queryClient.setQueryData<CollectionResponse<Vehicle>>(queryKeys.fleet.live(), (current) => {
+  queryClient.setQueriesData<CollectionResponse<Vehicle>>({ queryKey: ["fleet", "live"] }, (current) => {
     if (!current) return current;
     return {
       ...current,
@@ -162,7 +162,7 @@ export function useLiveSimulationController(): LiveSimulationValue {
         setState(next);
         setLastEventAt(Date.now());
         refreshLiveQueries(queryClient);
-        void queryClient.invalidateQueries({ queryKey: queryKeys.fleet.live() });
+        void queryClient.invalidateQueries({ queryKey: ["fleet", "live"] });
         void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
       } catch {
         if (!closed) setConnection("offline");

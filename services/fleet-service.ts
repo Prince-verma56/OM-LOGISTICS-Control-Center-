@@ -35,15 +35,46 @@ async function buildVehicles(): Promise<Vehicle[]> {
 
 async function list(query: FleetListQuery): Promise<CollectionResponse<Vehicle>> {
   const needle = query.search?.toLowerCase();
+  const fromMs = query.from ? new Date(query.from).getTime() : undefined;
+  const toMs = query.to ? new Date(query.to).getTime() : undefined;
+  
+  const repos = getRepositories();
+  const allShipments = await repos.shipments.list();
+
   const vehicles = (await buildVehicles()).filter((vehicle) => {
-    if (query.status && vehicle.status !== query.status) return false;
+    if (query.vehicleStatus && vehicle.status !== query.vehicleStatus) return false;
     if (query.routeId && vehicle.routeId !== query.routeId) return false;
-    if (
-      needle &&
-      ![vehicle.vehicleNumber, vehicle.vehicleType, vehicle.locationLabel].some((value) => value.toLowerCase().includes(needle))
-    ) {
-      return false;
+    if (query.vehicleId && vehicle.id !== query.vehicleId) return false;
+
+    const vehicleShipments = vehicle.currentShipmentIds
+      .map((id) => allShipments.find((s) => s.id === id))
+      .filter((s): s is ShipmentRecord => s !== undefined);
+
+    const hasMatchingShipment = vehicleShipments.some((shipment) => {
+      if (query.status && shipment.status !== query.status) return false;
+      if (query.riskLevel && shipment.riskLevel !== query.riskLevel) return false;
+      if (query.customerId && shipment.customer.id !== query.customerId) return false;
+      if (query.hubId && shipment.currentHubId !== query.hubId && shipment.nextHubId !== query.hubId) return false;
+      if (fromMs && new Date(shipment.bookedAt).getTime() < fromMs) return false;
+      if (toMs && new Date(shipment.bookedAt).getTime() > toMs) return false;
+      return true;
+    });
+
+    const hasShipmentFilters = query.status || query.riskLevel || query.customerId || query.hubId || query.from || query.to;
+    if (hasShipmentFilters && !hasMatchingShipment) return false;
+
+    if (needle) {
+      const matchVehicle = [vehicle.vehicleNumber, vehicle.vehicleType, vehicle.locationLabel].some(
+        (value) => value?.toLowerCase().includes(needle),
+      );
+      const matchShipment = vehicleShipments.some((shipment) =>
+        [shipment.trackingNumber, shipment.customer.name, shipment.origin, shipment.destination].some(
+          (value) => value?.toLowerCase().includes(needle),
+        ),
+      );
+      if (!matchVehicle && !matchShipment) return false;
     }
+
     return true;
   });
   vehicles.sort(

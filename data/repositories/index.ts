@@ -5,6 +5,7 @@ import { DummyFleetRepository } from "./dummy-fleet-repository";
 import { DummyAnalyticsRepository, DummyHubRepository } from "./dummy-hub-repository";
 import { DummyNotificationRepository } from "./dummy-notification-repository";
 import { DummyRouteRepository, DummyShipmentRepository } from "./dummy-shipment-repository";
+import { DummyUserRepository } from "./dummy-user-repository";
 import type { Repositories } from "./types";
 
 export type * from "./types";
@@ -44,6 +45,7 @@ export function getRepositories(): Repositories {
     exceptions: new DummyExceptionRepository(),
     notifications: new DummyNotificationRepository(),
     analytics: new DummyAnalyticsRepository(),
+    users: new DummyUserRepository(),
   };
   return repositories;
 }

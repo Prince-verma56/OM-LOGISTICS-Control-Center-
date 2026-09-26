@@ -103,7 +103,7 @@ describe("live simulation", () => {
     const notifications = store.notifications.filter((item) => item.shipmentId === shipment.id);
     expect(notifications.map((item) => item.template)).toEqual(expect.arrayContaining(["DELAY_NOTICE", "REVISED_ETA"]));
     expect(notifications.find((item) => item.template === "DELAY_NOTICE")?.title).toBe(`Shipment ${HEADLINE} is now at risk.`);
-    expect(notifications.every((item) => item.channel === "IN_APP" && item.provider === "DEMO")).toBe(true);
+    expect(notifications.every((item) => ["IN_APP", "WHATSAPP", "SMS", "EMAIL"].includes(item.channel) && item.provider === "DEMO")).toBe(true);
   });
 
   it("deduplicates repeated notifications for the same event", async () => {

@@ -44,6 +44,8 @@ export interface ApiErrorBody {
 
 export type ApiErrorCode =
   | "VALIDATION_ERROR"
+  | "UNAUTHORIZED"
+  | "FORBIDDEN"
   | "NOT_FOUND"
   | "SHIPMENT_NOT_FOUND"
   | "HUB_NOT_FOUND"
@@ -105,10 +107,8 @@ export interface ExceptionListQuery {
   pageSize: number;
 }
 
-export interface FleetListQuery {
-  status?: VehicleStatus;
-  search?: string;
-  routeId?: string;
+export interface FleetListQuery extends DashboardFilters {
+  vehicleStatus?: VehicleStatus;
 }
 
 export interface KpiQuery {

@@ -13,7 +13,7 @@ export type { NotificationSeverity, NotificationStatus, NotificationTemplate };
  *   "WHATSAPP" | "SMS" | "EMAIL" providers will implement `NotificationProvider`
  *   below and be selected via NOTIFICATION_PROVIDER_MODE. See README.md.
  */
-export type NotificationChannel = "IN_APP";
+export type NotificationChannel = "IN_APP" | "WHATSAPP" | "SMS" | "EMAIL";
 export type NotificationProviderId = "DEMO";
 
 export interface DemoNotification {
@@ -23,8 +23,8 @@ export interface DemoNotification {
 
   template: NotificationTemplate;
 
-  channel: "IN_APP";
-  provider: "DEMO";
+  channel: NotificationChannel;
+  provider: NotificationProviderId;
 
   status: NotificationStatus;
 

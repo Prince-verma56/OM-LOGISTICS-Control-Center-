@@ -10,10 +10,10 @@ import type { Vehicle } from "@/types/fleet";
  * Whole-fleet snapshot used by the live map. Loaded once, then patched in
  * place by VEHICLE_POSITION_UPDATED events (see use-live-simulation).
  */
-export function useFleetLive() {
+export function useFleetLive(params: QueryParams = {}) {
   return useQuery({
-    queryKey: queryKeys.fleet.live(),
-    queryFn: () => apiClient.get<CollectionResponse<Vehicle>>("/api/v1/fleet"),
+    queryKey: queryKeys.fleet.live(params),
+    queryFn: () => apiClient.get<CollectionResponse<Vehicle>>("/api/v1/fleet", params),
     staleTime: 60_000,
     refetchInterval: 60_000,
   });
