@@ -1,0 +1,353 @@
+// OM Logistics Intelligent Control Tower — PostgreSQL schema (foundation).
+//
+// Phase 1 runs entirely on in-memory demo repositories (DEMO_MODE=true) and
+// needs no database. This schema mirrors the domain contracts in `types/` so a
+// Prisma-backed repository layer (fed by TMS / WMS / GPS / traffic adapters)
+// can replace the dummy repositories without changing services or UI.
+//
+// Datasource URL is configured in prisma.config.ts (Prisma 7).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ShipmentStatus {
+  ORDER_BOOKED
+  PICKED_UP
+  IN_TRANSIT
+  HUB_REACHED
+  OUT_FOR_DELIVERY
+  DELIVERED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum VehicleStatus {
+  MOVING
+  IDLE
+  STOPPED
+  OFFLINE
+}
+
+enum HubStatus {
+  NORMAL
+  BUSY
+  CONGESTED
+}
+
+enum ExceptionType {
+  DELAY_RISK
+  HUB_DWELL
+  NO_MOVEMENT
+  ROUTE_DEVIATION
+  TRAFFIC
+  STALE_GPS
+  MISSED_MILESTONE
+}
+
+enum ExceptionSeverity {
+  INFO
+  WARNING
+  HIGH
+  CRITICAL
+}
+
+enum ExceptionStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  DISMISSED
+}
+
+enum NotificationTemplate {
+  SHIPMENT_UPDATE
+  DELAY_NOTICE
+  REVISED_ETA
+  TRACKING_LINK
+}
+
+enum NotificationStatus {
+  TRIGGERED
+  DELIVERED
+  FAILED
+}
+
+enum NotificationSeverity {
+  INFO
+  SUCCESS
+  WARNING
+  CRITICAL
+}
+
+enum DataSource {
+  DEMO
+  TMS
+  WMS
+  GPS_PROVIDER
+  HUB_SYSTEM
+}
+
+model Customer {
+  id        String     @id
+  name      String
+  segment   String
+  homeHubId String?
+  shipments Shipment[]
+  createdAt DateTime   @default(now())
+}
+
+model Hub {
+  id                  String      @id
+  code                String      @unique
+  name                String
+  city                String
+  state               String
+  latitude            Float
+  longitude           Float
+  status              HubStatus   @default(NORMAL)
+  arrivals            Int         @default(0)
+  departures          Int         @default(0)
+  activeShipments     Int         @default(0)
+  averageDwellMinutes Int         @default(0)
+  routeStops          RouteStop[]
+  hubVisits           HubVisit[]
+  updatedAt           DateTime    @updatedAt
+}
+
+model Route {
+  id                     String      @id
+  code                   String
+  origin                 String
+  destination            String
+  corridor               String
+  plannedDistanceKm      Int
+  plannedDurationMinutes Int
+  /// Planned polyline as [lng, lat] pairs.
+  geometry               Json
+  stops                  RouteStop[]
+  shipments              Shipment[]
+}
+
+model RouteStop {
+  routeId    String
+  sequence   Int
+  hubId      String
+  distanceKm Float
+  route      Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  hub        Hub    @relation(fields: [hubId], references: [id])
+
+  @@id([routeId, sequence])
+}
+
+model Vehicle {
+  id            String        @id
+  vehicleNumber String        @unique
+  vehicleType   String
+  homeHubId     String
+  status        VehicleStatus @default(IDLE)
+  latitude      Float
+  longitude     Float
+  headingDeg    Float?
+  speedKph      Float?
+  lastGpsAt     DateTime
+  gpsPoints     GpsPoint[]
+  shipments     Shipment[]
+}
+
+model GpsPoint {
+  id              String     @id
+  vehicleId       String
+  latitude        Float
+  longitude       Float
+  speedKph        Float?
+  headingDeg      Float?
+  recordedAt      DateTime
+  receivedAt      DateTime
+  source          DataSource
+  /// Idempotency key from the upstream provider (brain/06 §5).
+  externalEventId String?
+  vehicle         Vehicle    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([source, externalEventId])
+  @@index([vehicleId, recordedAt])
+}
+
+model Shipment {
+  id                  String          @id
+  trackingNumber      String          @unique
+  publicTrackingToken String          @unique
+  customerId          String
+  routeId             String
+  vehicleId           String?
+  status              ShipmentStatus
+  origin              String
+  destination         String
+  originLat           Float
+  originLng           Float
+  destinationLat      Float
+  destinationLng      Float
+  bookedAt            DateTime
+  pickedUpAt          DateTime?
+  promisedDeliveryAt  DateTime
+  originalEtaAt       DateTime
+  revisedEtaAt        DateTime?
+  deliveredAt         DateTime?
+  delayMinutes        Int             @default(0)
+  riskLevel           RiskLevel       @default(LOW)
+  currentLat          Float?
+  currentLng          Float?
+  currentRecordedAt   DateTime?
+  progressPct         Int             @default(0)
+  currentHubId        String?
+  nextHubId           String?
+  locationLabel       String?
+  delayReason         String?
+  lastUpdatedAt       DateTime
+  customer            Customer        @relation(fields: [customerId], references: [id])
+  route               Route           @relation(fields: [routeId], references: [id])
+  vehicle             Vehicle?        @relation(fields: [vehicleId], references: [id])
+  events              ShipmentEvent[]
+  hubVisits           HubVisit[]
+  etaPredictions      EtaPrediction[]
+  exceptions          Exception[]
+  notifications       Notification[]
+
+  @@index([status])
+  @@index([riskLevel])
+  @@index([customerId])
+  @@index([vehicleId])
+  @@index([bookedAt])
+}
+
+model ShipmentEvent {
+  id              String     @id
+  shipmentId      String
+  type            String
+  title           String
+  description     String?
+  locationLabel   String?
+  hubId           String?
+  occurredAt      DateTime
+  receivedAt      DateTime
+  source          DataSource
+  externalEventId String?
+  shipment        Shipment   @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@unique([source, externalEventId])
+  @@index([shipmentId, occurredAt])
+}
+
+model HubVisit {
+  id           String    @id @default(cuid())
+  shipmentId   String
+  hubId        String
+  sequence     Int
+  arrivedAt    DateTime?
+  departedAt   DateTime?
+  dwellMinutes Int?
+  status       String
+  shipment     Shipment  @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  hub          Hub       @relation(fields: [hubId], references: [id])
+
+  @@index([hubId])
+  @@index([shipmentId])
+}
+
+model EtaPrediction {
+  id              String    @id @default(cuid())
+  shipmentId      String
+  predictedEtaAt  DateTime
+  previousEtaAt   DateTime?
+  generatedAt     DateTime
+  delayMinutes    Int
+  confidence      Float
+  riskLevel       RiskLevel
+  bufferMinutes   Int
+  /// [{ key, label, impactMinutes }]
+  factors         Json
+  explanation     String
+  dataFreshnessAt DateTime
+  shipment        Shipment  @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId, generatedAt])
+}
+
+model Exception {
+  id                  String            @id
+  shipmentId          String
+  type                ExceptionType
+  severity            ExceptionSeverity
+  title               String
+  description         String
+  detectedAt          DateTime
+  status              ExceptionStatus   @default(OPEN)
+  assignedTo          String?
+  resolutionNote      String?
+  resolvedAt          DateTime?
+  source              String
+  vehicleId           String?
+  hubId               String?
+  affectedShipmentIds String[]
+  updatedAt           DateTime
+  shipment            Shipment          @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  audit               ExceptionAudit[]
+
+  @@index([status, severity])
+  @@index([detectedAt])
+}
+
+/// Audit trail for every workflow change (brain/00 §7).
+model ExceptionAudit {
+  id           String           @id
+  exceptionId  String
+  actor        String
+  action       String
+  fromStatus   ExceptionStatus?
+  toStatus     ExceptionStatus?
+  fromAssignee String?
+  toAssignee   String?
+  note         String?
+  at           DateTime
+  exception    Exception        @relation(fields: [exceptionId], references: [id], onDelete: Cascade)
+
+  @@index([exceptionId, at])
+}
+
+/// Phase 1: channel IN_APP / provider DEMO only. WhatsApp / SMS / email are future providers.
+model Notification {
+  id         String               @id
+  shipmentId String?
+  template   NotificationTemplate
+  channel    String               @default("IN_APP")
+  provider   String               @default("DEMO")
+  status     NotificationStatus
+  severity   NotificationSeverity
+  title      String
+  message    String
+  createdAt  DateTime
+  /// Deduplication key: shipment + template + channel + event (brain/11 §7).
+  dedupeKey  String?              @unique
+  shipment   Shipment?            @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+}
+
+model KpiSnapshot {
+  date                    String @id
+  etaAccuracy             Float
+  otif                    Float
+  avgDelayResponseMinutes Int
+  customerQueries         Int
+  avgHubDwellMinutes      Int
+  routeExceptions         Int
+}
